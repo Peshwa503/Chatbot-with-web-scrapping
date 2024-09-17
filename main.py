@@ -194,9 +194,5 @@ def main():
         user_input(user_question)
 
 
-
-
-
-
 if __name__ == "__main__":
     main()
