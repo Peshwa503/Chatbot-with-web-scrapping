@@ -84,9 +84,9 @@ def check_article_content(url):
 def get_db_text(db_path):
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
-    cursor.execute("SELECT content FROM articles")  # Adjust SQL query if needed
+    cursor.execute("SELECT content FROM articles")
     rows = cursor.fetchall()
-    text = " ".join(row[0] for row in rows)  # Assuming 'content' is the column with text
+    text = " ".join(row[0] for row in rows)
     conn.close()
     return text
 
