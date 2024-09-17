@@ -14,6 +14,6 @@ prompt_template_1 = """
   If the answer is not found in the context or if the question requires definitions or explanations, provide those using your own knowledge.
   If the question is completely unrelated to the articles, respond with "Ask a different question" without providing an incorrect or misleading answer.
   
-  Context:\n {context}?\n
+  Context:\n {context}\n
   Question: \n{question}\n
   """

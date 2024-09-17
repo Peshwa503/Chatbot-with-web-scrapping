@@ -107,11 +107,9 @@ def get_conversational_chain():
     return chain
 
 def user_input(user_question):
-    
     embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
 
     new_db = FAISS.load_local("faiss_index", embeddings, allow_dangerous_deserialization=True)
-    # **Warning:** This line allows dangerous deserialization
     docs = new_db.similarity_search(user_question)
 
     chain = get_conversational_chain()
@@ -121,8 +119,42 @@ def user_input(user_question):
         return_only_outputs=True
     )
 
-    print(response)
-    st.write("Reply: ", response["output_text"])
+    response_text = response["output_text"]
+    
+    # Store the question and response in the database
+    conn = sqlite3.connect('articles.db')
+    cur = conn.cursor()
+
+    cur.execute('''
+        INSERT INTO responses (question, response)
+        VALUES (?, ?)
+    ''', (user_question, response_text))
+
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    # Display the response
+    st.write("Reply: ", response_text)
+
+def display_responses():
+    conn = sqlite3.connect('articles.db')
+    cur = conn.cursor()
+
+    cur.execute("SELECT * FROM responses ORDER BY timestamp DESC")
+    rows = cur.fetchall()
+
+    st.write("### Previous Conversations")
+    for row in rows:
+        st.write(f"**Question**: {row[1]}")
+        st.write(f"**Response**: {row[2]}")
+        st.write(f"**Timestamp**: {row[3]}")
+        st.write("---")
+
+    cur.close()
+    conn.close()
+
+
 
 def main():
     st.set_page_config("Chat With Website")
@@ -131,13 +163,12 @@ def main():
     URL = st.text_input("Enter the website link", value="https://economictimes.indiatimes.com/industry/indl-goods/svs/engineering")
     if st.button("Load website"):
         with st.spinner("Loading..."):
-                        # Scrape articles
+            # Scrape articles
             articles = scrape_articles(URL)
 
             # Convert to DataFrame for easier viewing and storage
             df = pd.DataFrame(articles)
             print(df.head())  # Preview the scraped data
-
 
             # Connect to SQLite database (or create it)
             conn = sqlite3.connect('articles.db')
@@ -153,6 +184,16 @@ def main():
                 url TEXT,
                 publication_date TEXT,
                 content TEXT
+            )
+            ''')
+
+            # Create the table to store questions and responses
+            cur.execute('''
+            CREATE TABLE IF NOT EXISTS responses (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                question TEXT,
+                response TEXT,
+                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
             )
             ''')
 
@@ -183,12 +224,15 @@ def main():
             cur.close()
             conn.close()
 
-            db_path="articles.db"
-
+            db_path = "articles.db"
             raw_text = get_db_text(db_path)
             text_chunks = get_text_chunks(raw_text)
             get_vector_store(text_chunks)
             st.success("Database Loaded, Ask Your Queries!")
+
+    # Add a button to display past conversations
+    if st.button("Show Past Conversations"):
+        display_responses()
 
     user_question = st.text_input("Ask a Question from the Website")
     if user_question:
